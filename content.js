@@ -89,9 +89,33 @@
     });
     panelEl.appendChild(presetWrap);
 
-    document.body.appendChild(panelEl);
+    mountPanel();
     makeDraggable(panelEl);
     updateLabel(video.playbackRate);
+  }
+
+  // 預設嵌進 YouTube 頂端列(搜尋框與右側按鈕之間),拖曳後改為浮動
+  function mountPanel() {
+    if (!panelEl.classList.contains("yts-floating")) {
+      const end = document.querySelector("ytd-masthead #end");
+      if (end) {
+        if (panelEl.parentElement !== end) end.prepend(panelEl);
+        panelEl.classList.add("yts-docked");
+        return;
+      }
+    }
+    if (!document.body.contains(panelEl)) document.body.appendChild(panelEl);
+  }
+
+  function undock(el) {
+    if (!el.classList.contains("yts-docked")) return;
+    const rect = el.getBoundingClientRect();
+    el.classList.remove("yts-docked");
+    el.classList.add("yts-floating");
+    el.style.left = rect.left + "px";
+    el.style.top = rect.top + "px";
+    el.style.right = "auto";
+    document.body.appendChild(el);
   }
 
   function makeDraggable(el) {
@@ -100,6 +124,7 @@
     let offsetY = 0;
     el.addEventListener("mousedown", (e) => {
       if (e.target.tagName === "BUTTON") return;
+      undock(el);
       dragging = true;
       const rect = el.getBoundingClientRect();
       offsetX = e.clientX - rect.left;
@@ -134,9 +159,7 @@
   function scan() {
     const video = document.querySelector("video");
     if (video && video !== currentVideo) attachToVideo(video);
-    if (video && panelEl && !document.body.contains(panelEl)) {
-      document.body.appendChild(panelEl);
-    }
+    if (video && panelEl) mountPanel();
   }
 
   document.addEventListener("keydown", (e) => {

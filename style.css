@@ -17,6 +17,13 @@
   user-select: none;
 }
 
+#yts-panel.yts-docked {
+  position: static;
+  flex-shrink: 0;
+  margin-right: 8px;
+  box-shadow: none;
+}
+
 #yts-panel button {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
