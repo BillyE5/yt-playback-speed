@@ -7,21 +7,26 @@
   const MAX_SPEED = 16; // 瀏覽器實際上限,可自行調整
   const STEP = 0.25;
   const STORAGE_KEY = "ytSpeedExt_lastSpeed";
+  const POS_KEY = "ytSpeedExt_panelPos";
 
   let currentVideo = null;
   let panelEl = null;
+  let savedPos = null; // 拖曳後的面板位置 {left, top};null 表示嵌在頂端列
 
-  function getStoredSpeed(cb) {
+  function getStored(cb) {
     try {
-      chrome.storage.local.get([STORAGE_KEY], (res) => cb(res[STORAGE_KEY] || 1));
+      chrome.storage.local.get([STORAGE_KEY, POS_KEY], (res) =>
+        cb(res[STORAGE_KEY] || 1, res[POS_KEY] || null)
+      );
     } catch (e) {
-      cb(1);
+      cb(1, null);
     }
   }
 
-  function setStoredSpeed(speed) {
+  function setStored(key, value) {
     try {
-      chrome.storage.local.set({ [STORAGE_KEY]: speed });
+      if (value === null) chrome.storage.local.remove(key);
+      else chrome.storage.local.set({ [key]: value });
     } catch (e) {
       /* ignore */
     }
@@ -48,7 +53,7 @@
   function setSpeed(video, speed) {
     speed = clamp(Math.round(speed / STEP) * STEP);
     applySpeed(video, speed);
-    setStoredSpeed(speed);
+    setStored(STORAGE_KEY, speed);
     updateLabel(speed);
   }
 
@@ -89,7 +94,8 @@
     });
     panelEl.appendChild(presetWrap);
 
-    mountPanel();
+    if (savedPos) floatAt(panelEl, savedPos.left, savedPos.top);
+    else mountPanel();
     makeDraggable(panelEl);
     updateLabel(video.playbackRate);
   }
@@ -107,15 +113,31 @@
     if (!document.body.contains(panelEl)) document.body.appendChild(panelEl);
   }
 
+  // 改為浮動並放到指定位置,確保不會跑出視窗外
+  function floatAt(el, left, top) {
+    el.classList.remove("yts-docked");
+    el.classList.add("yts-floating");
+    if (!document.body.contains(el) || el.parentElement !== document.body) document.body.appendChild(el);
+    const maxLeft = Math.max(0, window.innerWidth - el.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - el.offsetHeight);
+    el.style.left = Math.min(Math.max(left, 0), maxLeft) + "px";
+    el.style.top = Math.min(Math.max(top, 0), maxTop) + "px";
+    el.style.right = "auto";
+  }
+
   function undock(el) {
     if (!el.classList.contains("yts-docked")) return;
     const rect = el.getBoundingClientRect();
-    el.classList.remove("yts-docked");
-    el.classList.add("yts-floating");
-    el.style.left = rect.left + "px";
-    el.style.top = rect.top + "px";
-    el.style.right = "auto";
-    document.body.appendChild(el);
+    floatAt(el, rect.left, rect.top);
+  }
+
+  // 雙擊面板空白處:放回頂端列,並清除記住的位置
+  function redock(el) {
+    el.classList.remove("yts-floating");
+    el.style.left = el.style.top = el.style.right = "";
+    savedPos = null;
+    setStored(POS_KEY, null);
+    mountPanel();
   }
 
   function makeDraggable(el) {
@@ -138,14 +160,22 @@
       el.style.right = "auto";
     });
     document.addEventListener("mouseup", () => {
+      if (!dragging) return;
       dragging = false;
+      savedPos = { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+      setStored(POS_KEY, savedPos);
+    });
+    el.addEventListener("dblclick", (e) => {
+      if (e.target.tagName === "BUTTON") return;
+      redock(el);
     });
   }
 
   function attachToVideo(video) {
     if (!video || video === currentVideo) return;
     currentVideo = video;
-    getStoredSpeed((speed) => {
+    getStored((speed, pos) => {
+      savedPos = pos;
       applySpeed(video, speed);
       buildPanel(video);
     });
@@ -174,6 +204,11 @@
       changeSpeed(currentVideo, -STEP);
       e.preventDefault();
     }
+  });
+
+  // 視窗縮小時,把浮動面板拉回可見範圍
+  window.addEventListener("resize", () => {
+    if (panelEl && savedPos) floatAt(panelEl, savedPos.left, savedPos.top);
   });
 
   const observer = new MutationObserver(() => scan());
