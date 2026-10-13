@@ -1,5 +1,7 @@
 # yt-playback-speed
 
+<img src="icons/icon128.png" width="96" alt="icon">
+
 讓 YouTube 突破原生 2 倍速上限的 Chrome 擴充功能。在頁面上加一個可拖曳的小面板，一鍵切換倍速，最高支援 16x。
 
 ## 功能
@@ -37,6 +39,7 @@
 manifest.json   擴充功能設定（Manifest V3）
 content.js      注入 YouTube 頁面的主程式
 style.css       面板樣式
+icons/          擴充功能圖示（icon.svg 為原始檔）
 ```
 
 ## License
