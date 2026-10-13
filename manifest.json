@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube 超高速播放控制",
+  "version": "1.0.0",
+  "description": "讓 YouTube 影片突破原生 2 倍速上限,支援 0.25x–16x 播放速度,並記住上次使用的倍速。",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
